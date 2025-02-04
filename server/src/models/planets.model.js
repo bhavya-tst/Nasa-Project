@@ -1,5 +1,7 @@
-const {parse}=require('csv-parse');
 const fs=require('fs');
+const path=require('path');
+
+const {parse}=require('csv-parse');
 
 const habitablePlanets=[];
 function isHabitablePlanet(planet){
@@ -8,8 +10,12 @@ function isHabitablePlanet(planet){
     && planet['koi_prad'] < 1.6  
 
 }
-fs.createReadStream("kepler_data.csv")
-.pipe(parse({
+
+const loadPlanetsData=()=>{
+    console.log(__dirname);
+    return new Promise((resolve,reject)=>{
+        fs.createReadStream(path.join(__dirname,'..','..','data','kepler_data.csv'))
+        .pipe(parse({
     comment:"#",
     columns:true,
 }))
@@ -18,12 +24,17 @@ fs.createReadStream("kepler_data.csv")
         habitablePlanets.push(data);
 })
 .on("end",()=>{
-console.log("There are only "+habitablePlanets.length+" habitable as earth.");
+    console.log("There are only "+habitablePlanets.length+" habitable as earth.");
+    resolve();
 })
 .on("error",(err)=>{
     console.log("Error: ",err);
+    reject(err);
 })
+})
+}
 
 module.exports={
-    planets:habitablePlanets
+    planets:habitablePlanets,
+    loadPlanetsData
 }
