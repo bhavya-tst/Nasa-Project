@@ -1,5 +1,7 @@
 const { get } = require("../app");
+const launchModel = require("../routes/launches/launches.mongo");
 
+const DEFAULT_FLIGHT_NUMBER=100;
 let latestFlightNumber=100;
 const launches=new Map();
 
@@ -13,13 +15,33 @@ const launch={
     upcoming:true,
     success:true,
 }
-
-launches.set(launch.flightNumber,launch);
-
-function getAllLaunches(){
-    return Array.from(launches.values());
+async function saveLaunch(launch){
+    await launchModel.updateOne({flightNumber:launch.flightNumber},launch,{upsert:true});
 }
 
+saveLaunch(launch);
+
+async function getAllLaunches(){
+    return await launchModel.find({},{'_id':0,'__v':0});
+}
+
+async function getLatestFlightNumber(){
+    const latestLaunch=await launchModel.findOne().sort('-flightNumber');
+    if(!latestLaunch){
+        return DEFAULT_FLIGHT_NUMBER;
+    }
+    return latestLaunch.flightNumber;
+}
+async function scheduleNewLaunch(launch){
+    const newFlightNumber=await getLatestFlightNumber()+1;
+    const newLaunch=Object.assign(launch,{
+        success:true,
+        upcoming:true,
+        customer:['ZTM','NASA'],
+        flightNumber:newFlightNumber,
+    });
+    await saveLaunch(newLaunch);
+}
 function addNewLaunch(launch){
     latestFlightNumber++;
     launches.set(launch.flightNumber,Object.assign(launch,{
@@ -30,14 +52,12 @@ function addNewLaunch(launch){
     }));
 }
 
-function existsLaunchWithId(launchId){
-    return launches.has(launchId);
+async function existsLaunchWithId(launchId){
+    return await launchModel.find({flightNumber:launchId});
 }
 
-function abortLaunchById(launchId){
-    const aborted=launches.get(launchId);
-    aborted.upcoming=false;
-    aborted.success=false;
-    return aborted;
+async function abortLaunchById(launchId){
+    const aborted=await launchModel.updateOne({flightNumber:launchId},{upcoming:false,success:false});
+    return aborted.modifiedCount===1?{ok:true}:{ok:false};
 }
-module.exports={launches,getAllLaunches,addNewLaunch,existsLaunchWithId,abortLaunchById};
+module.exports={launches,getAllLaunches,addNewLaunch,existsLaunchWithId,abortLaunchById,scheduleNewLaunch};

@@ -2,6 +2,7 @@ const fs=require('fs');
 const path=require('path');
 
 const {parse}=require('csv-parse');
+const planetModel = require('../routes/planets/planets.mongo');
 
 const habitablePlanets=[];
 function isHabitablePlanet(planet){
@@ -19,9 +20,9 @@ const loadPlanetsData=()=>{
     comment:"#",
     columns:true,
 }))
-.on("data",(data)=>{
+.on("data",async (data)=>{
     if(isHabitablePlanet(data))
-        habitablePlanets.push(data);
+        await planetModel.updateOne({keplerName:data.kepler_name},{$set:data},{upsert:true});
 })
 .on("end",()=>{
     console.log("There are only "+habitablePlanets.length+" habitable as earth.");
